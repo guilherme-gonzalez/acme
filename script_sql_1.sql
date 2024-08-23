@@ -1,4 +1,4 @@
-CREATE VIEW NPS_DERIVADO AS 
+CREATE VIEW V_NPS_DERIVADO AS 
 WITH nps_grouped AS (
     SELECT n.case_id,
            CASE 

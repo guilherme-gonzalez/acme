@@ -1,4 +1,4 @@
-create view NPS_REP_TEAM_MO_RPT as 
+create view V_NPS_REP_TEAM_MO_RPT as 
 WITH nps_grouped AS (
     SELECT n.case_id,
            CASE 

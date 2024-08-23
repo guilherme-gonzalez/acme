@@ -15,6 +15,10 @@
   - [4. Estrategia de Monitoreo](#4-estrategia-de-monitoreo)
   - [5. Identificación de Puntos de Fallo](#5-identificación-de-puntos-de-fallo)
 - [Parte 2 - Transformaciones de datos](#parte-2---transformaciones-de-datos)
+  - [1. Se necesita calcular el NPS para dos categorías:](#1-se-necesita-calcular-el-nps-para-dos-categorías)
+      - [a. Casos por mes que fueron derivados al menos una vez y casos que no tuvieron ninguna derivación.](#a-casos-por-mes-que-fueron-derivados-al-menos-una-vez-y-casos-que-no-tuvieron-ninguna-derivación)
+      - [b. Se requiere visualizar el NPS por cada equipo de representantes y por mes.](#b-se-requiere-visualizar-el-nps-por-cada-equipo-de-representantes-y-por-mes)
+  - [2. Proponer la forma de incorporar el procesamiento de los scripts en el pipeline existente.](#2-proponer-la-forma-de-incorporar-el-procesamiento-de-los-scripts-en-el-pipeline-existente)
 
 ## 1. Stack de Tecnologías
 ![img](azure_datalake.png)
@@ -118,10 +122,10 @@ CREATE TABLE public.nps (
 
 Luego, siguiendo la consigna de desarrollar 2 scripts para cada punto, hice las siguientes transformaciones:
 
-  a. Se necesita calcular el NPS para dos categorías: casos por mes que fueron
-  derivados al menos una vez y casos que no tuvieron ninguna derivación.
+## 1. Se necesita calcular el NPS para dos categorías: 
+#### a. Casos por mes que fueron derivados al menos una vez y casos que no tuvieron ninguna derivación.
   ```sql
-  CREATE VIEW NPS_DERIVADO AS
+  CREATE VIEW V_NPS_DERIVADO AS
 WITH nps_grouped AS (
     SELECT n.case_id,
            CASE 
@@ -156,5 +160,71 @@ FROM nps_by_category;
 ```
 
 Decidí utilizar CTEs (common table expressions) más por un tema de claridad de que performance. El código cuenta con 4 pasos.
-1. calcula los de nps_score por case_id
-2. 
+1. calcula los de nps_score por case_id de la tabla `public.nps`
+2. determina las categorias 'derivado' y 'no_derivado' para la columna referral_status en la tabla `public.interacciones`
+3. hace un count de los promotores, detractores y del total general, también hace un join entre los 2 CTEs previos
+4. hace un query de la columna referral_status, y calcula el valor del nps en la columna nps
+> ❕ **Nota** se multiplica (promoters - detractors) * 1.0 para forzar a que el resultado sea decimal en postgres
+
+resultado:
+
+![script1](script_sql_1.png)
+
+#### b. Se requiere visualizar el NPS por cada equipo de representantes y por mes.
+```sql
+create view V_NPS_REP_TEAM_MO_RPT as 
+WITH nps_grouped AS (
+    SELECT n.case_id,
+           CASE 
+               WHEN n.nps_score >= 0 AND n.nps_score <= 6 THEN -1
+               WHEN n.nps_score >= 7 AND n.nps_score <= 8 THEN 0
+               WHEN n.nps_score >= 9 AND n.nps_score <= 10 THEN 1
+           END AS nps_group
+    FROM public.nps n
+),
+case_categories AS (
+    SELECT i.case_id,
+           CASE 
+               WHEN i.interaction_type = 'rep_derivation' THEN 'derivado'
+               ELSE 'no_derivado'
+           END AS referral_status,
+           i.int_date,
+           r.team
+    FROM public.interacciones i
+    LEFT JOIN public.representantes r ON i.representante = r.representante
+    WHERE i.representante IS NOT NULL
+),
+nps_by_team_and_month AS (
+    SELECT 
+        cc.team,
+        TO_CHAR(cc.int_date, 'YYYY-MM') AS month,
+        cc.referral_status,
+        COUNT(CASE WHEN ng.nps_group = 1 THEN 1 END) AS count_promoters,
+        COUNT(CASE WHEN ng.nps_group = -1 THEN 1 END) AS count_detractors,
+        COUNT(*) AS count_total
+    FROM case_categories cc
+    LEFT JOIN nps_grouped ng ON cc.case_id = ng.case_id
+    GROUP BY cc.team, TO_CHAR(cc.int_date, 'YYYY-MM'), cc.referral_status
+)
+SELECT 
+    team,
+    month,
+    referral_status,
+    (count_promoters - count_detractors) * 1.0 / count_total AS nps
+FROM nps_by_team_and_month
+ORDER BY month, team, referral_status;
+```
+El segundo script es relativamente parecido al script 1, solo que en este caso necesitamos que las agregaciones sean por año-mes y por equipo.
+
+resultado:
+![script1](script_sql_2.png)
+
+## 2. Proponer la forma de incorporar el procesamiento de los scripts en el pipeline existente.
+
+La manera en la que yo incluiría estas 3 tablas y sus transformaciones en la arquitectura Medallion sería:
+
+**Bronze**: para el layer bronze cargaría las tablas fuente `interacciones`,`representates`,`nps` como archivos parquet en el data lake.
+
+**Silver**: para le layer silver se crearían tablas delta lake para las 3 tablas mencionadas arriba, como también procesos de validación como `unique` y `not null` para ciertos campos.
+
+**Gold**: aquí se encontrarían las agregaciones que realizamo (`V_NPS_DERIVADO` y `V_NPS_REP_TEAM_MO_RPT`), que contienen lógica de negocio, y estan listas para utilizarse en reportes.
