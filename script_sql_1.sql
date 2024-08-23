@@ -1,4 +1,4 @@
-CREATE VIEW NPS_DERIVADO AS
+CREATE VIEW NPS_DERIVADO AS 
 WITH nps_grouped AS (
     SELECT n.case_id,
            CASE 
@@ -11,8 +11,8 @@ WITH nps_grouped AS (
 case_categories AS (
     SELECT DISTINCT i.case_id,
            CASE 
-               WHEN i.interaction_type = 'rep_derivation' THEN 'referred'
-               ELSE 'not_referred'
+               WHEN i.interaction_type = 'rep_derivation' THEN 'derivado'
+               ELSE 'no_derivado'
            END AS referral_status
     FROM public.interacciones i
 ),
