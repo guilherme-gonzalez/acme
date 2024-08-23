@@ -9,7 +9,7 @@ WITH nps_grouped AS (
     FROM public.nps n
 ),
 case_categories AS (
-    SELECT DISTINCT i.case_id,
+    SELECT i.case_id,
            CASE 
                WHEN i.interaction_type = 'rep_derivation' THEN 'derivado'
                ELSE 'no_derivado'

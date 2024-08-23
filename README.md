@@ -29,7 +29,7 @@ El stack de tecnologías propuesto para la empresa ACME utiliza un enfoque de la
 
 **Ingestion**: Utilizaremos dataflows de ADF (Azure Data Factory) en un modelo `EL` (Extract and Load) para cargar datos en la capa Bronze. Para procesos más complejos, emplearemos `Azure Functions` dentro de ADF.
 
-**Orquestador**: ADF se encargará de la orquestación debido a su simplicidad e integración, aunque también ofrecemos la opción de Managed Airflow si se requiere.
+**Orquestador**: ADF se encargará de la orquestación debido a su simplicidad e integración, aunque también ofrecemos la opción de Managed Airflow si se requiere. Databricks cuenta con su propio orquestador (que se prodría utilizar para los layers de transformación), pero preferimos utilizar ADF para todos los jobs.
 
 **Lakehouse**: Optamos por Databricks y Azure Data Lake Gen2 para la infraestructura del lakehouse. Databricks integra Spark y Delta Lake, permitiendo transacciones ACID sobre el data lake. Usaremos Azure Data Lake para almacenamiento en formato Parquet.
 
@@ -80,6 +80,7 @@ Implementaremos buenas prácticas de desarrollo de software, incluyendo versiona
   - **Rendimiento**: Problemas durante la ingesta o transformación de datos.
 
 - **Protocolo de Resolución de Incidentes**:
+  - **Sistema de ticketing**: Recomendamos utilizar un software de gestión de tickets `ITSM` para visualizar y manejar el backlog de indicidentes. Nuestra recomendación es `Jira Service Management`
   - **Documentación y Diagnóstico**: Registrar y diagnosticar problemas detalladamente.
   - **Resolución Inicial**: Intentar resolver problemas siguiendo procedimientos estándar.
   - **Escalación**: Escalar a soporte si es necesario.
@@ -125,7 +126,7 @@ Luego, siguiendo la consigna de desarrollar 2 scripts para cada punto, hice las 
 ## 1. Se necesita calcular el NPS para dos categorías: 
 #### a. Casos por mes que fueron derivados al menos una vez y casos que no tuvieron ninguna derivación.
   ```sql
-  CREATE VIEW V_NPS_DERIVADO AS
+CREATE VIEW V_NPS_DERIVADO AS 
 WITH nps_grouped AS (
     SELECT n.case_id,
            CASE 
@@ -136,10 +137,10 @@ WITH nps_grouped AS (
     FROM public.nps n
 ),
 case_categories AS (
-    SELECT DISTINCT i.case_id,
+    SELECT i.case_id,
            CASE 
-               WHEN i.interaction_type = 'rep_derivation' THEN 'referred'
-               ELSE 'not_referred'
+               WHEN i.interaction_type = 'rep_derivation' THEN 'derivado'
+               ELSE 'no_derivado'
            END AS referral_status
     FROM public.interacciones i
 ),
@@ -215,6 +216,8 @@ FROM nps_by_team_and_month
 ORDER BY month, team, referral_status;
 ```
 El segundo script es relativamente parecido al script 1, solo que en este caso necesitamos que las agregaciones sean por año-mes y por equipo.
+
+en el CTE case_categories utilizamos un `INNER JOIN` para excluir representantes nulos en la tabla `public.interacciones`
 
 resultado:
 ![script1](script_sql_2.png)

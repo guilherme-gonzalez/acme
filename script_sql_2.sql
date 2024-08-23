@@ -17,8 +17,7 @@ case_categories AS (
            i.int_date,
            r.team
     FROM public.interacciones i
-    LEFT JOIN public.representantes r ON i.representante = r.representante
-    WHERE i.representante IS NOT NULL
+    INNER JOIN public.representantes r ON i.representante = r.representante
 ),
 nps_by_team_and_month AS (
     SELECT 
