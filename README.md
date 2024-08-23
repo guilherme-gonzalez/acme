@@ -32,7 +32,7 @@ El stack de tecnologías propuesto para la empresa ACME utiliza un enfoque de la
 **Capas de Transformación**: Adoptamos la arquitectura Medallion con tres capas: Bronze, Silver y Gold.
 
 - **Bronze**: Datos crudos extraídos de las fuentes. Aunque no es obligatorio, se recomienda almacenar en formato Parquet para un manejo eficiente.
-- **Silver**: Datos validados y transformados, almacenados en formato Parquet para asegurar consistencia.
+- **Silver**: Datos validados y transformados, almacenados en formato Parquet y con sus respectivas tablas delta lake creadas.
 - **Gold**: Datos procesados y/o agregados, optimizados para reportes y análisis.
 
 ## 2. Versionado & CI/CD
@@ -80,8 +80,39 @@ Implementaremos buenas prácticas de desarrollo de software, incluyendo versiona
   - **Resolución Inicial**: Intentar resolver problemas siguiendo procedimientos estándar.
   - **Escalación**: Escalar a soporte si es necesario.
 
----
-
-Espero que este formato sea más adecuado para tus necesidades. ¡Avísame si necesitas más ajustes!
-
 # Parte 2 - Transformaciones de datos
+
+Para desarrollar los scripts SQL, primero hice unos scripts de python (directorio `create_csv_py`) para generar CSVs (directorio `csv`), que luego inserté en una base de datos postgres.
+
+los DDLs utilizados para las 2 tablas de hechos y la tabla de dimensiones son estos: (directorio `sql`)
+
+```sql
+-- tabla de hechos interacciones
+CREATE TABLE public.interacciones (
+    case_id INTEGER PRIMARY KEY,
+    interaction_id VARCHAR(10) NOT NULL,
+    interaction_type VARCHAR(20) NOT NULL,
+    representante VARCHAR(50),
+    int_date DATE NOT NULL
+);
+```
+```sql
+-- tabla de dimensiones representantes
+CREATE TABLE public.representantes (
+    representante VARCHAR(50) PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    team INTEGER NOT NULL,
+    incoming_date DATE NOT NULL,
+    status VARCHAR(10) CHECK (status IN ('Active', 'Inactive'))
+);
+```
+```sql
+-- tabla de hechos nps
+CREATE TABLE public.nps (
+    survey_id SERIAL PRIMARY KEY,
+    case_id INTEGER NOT NULL,
+    nps_score INTEGER CHECK (nps_score BETWEEN 0 AND 10),
+    ps_comment TEXT
+);
+```
+
