@@ -225,6 +225,6 @@ La manera en la que yo incluiría estas 3 tablas y sus transformaciones en la ar
 
 **Bronze**: para el layer bronze cargaría las tablas fuente `interacciones`,`representates`,`nps` como archivos parquet en el data lake.
 
-**Silver**: para le layer silver se crearían tablas delta lake para las 3 tablas mencionadas arriba, como también procesos de validación como `unique` y `not null` para ciertos campos.
+**Silver**: para el layer silver se crearían tablas delta lake para las 3 tablas mencionadas arriba, como también procesos de validación como `unique` y `not null` para ciertos campos.
 
-**Gold**: aquí se encontrarían las agregaciones que realizamo (`V_NPS_DERIVADO` y `V_NPS_REP_TEAM_MO_RPT`), que contienen lógica de negocio, y estan listas para utilizarse en reportes.
+**Gold**: aquí se encontrarían las agregaciones que realizamos (`V_NPS_DERIVADO` y `V_NPS_REP_TEAM_MO_RPT`), que contienen lógica de negocio, y estan listas para utilizarse en reportes.
